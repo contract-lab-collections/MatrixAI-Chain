@@ -270,6 +270,8 @@ impl pallet_sudo::Config for Runtime {
 /// Configure the pallet-hashrate-market in pallets/hashrate-market.
 impl pallet_hashrate_market::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type StringLimit = ConstU32<2048>;
 	type WeightInfo = pallet_hashrate_market::weights::SubstrateWeight<Runtime>;
 }
 
