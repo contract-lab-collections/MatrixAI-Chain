@@ -19,7 +19,7 @@ use types::*;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{
-		Currency, LockableCurrency,
+		Currency, ReservableCurrency,
 		ExistenceRequirement::KeepAlive,
 	},
 };
@@ -27,7 +27,6 @@ use frame_support::{
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::pallet]
@@ -39,7 +38,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The currency mechanism.
-		type Currency: LockableCurrency<Self::AccountId>;
+		type Currency: ReservableCurrency<Self::AccountId>;
 
 		/// The maximum length of a machine metadata stored on-chain.
 		#[pallet::constant]
@@ -51,7 +50,6 @@ pub mod pallet {
 
 	/// Details of a machine.
 	#[pallet::storage]
-	#[pallet::getter(fn cacher)]
 	pub(super) type Machine<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
@@ -59,6 +57,15 @@ pub mod pallet {
 		Blake2_128Concat,
 		UUID,
 		MachineDetails<BoundedString<T>, BalanceOf<T>>,
+	>;
+
+	/// Details of a order.
+	#[pallet::storage]
+	pub(super) type Order<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		UUID,
+		OrderDetails<AccountOf<T>, BoundedString<T>, BalanceOf<T>>,
 	>;
 
 	#[pallet::event]
@@ -72,18 +79,33 @@ pub mod pallet {
 		OfferMaked { owner: AccountOf<T>, id: UUID, price: BalanceOf<T> },
 		/// A machine was removed.
 		OfferCanceled { owner: AccountOf<T>, id: UUID },
+		/// An order was placed.
+		OrderPlaced { 
+			order_id: UUID,
+			buyer: AccountOf<T>,
+			seller: AccountOf<T>,
+			machine_id: UUID,
+			total: BalanceOf<T>,
+			metadata: BoundedString<T>,
+		},
+		/// An order was completed successfully.
+		OrderCompleted { order_id: UUID, buyer: AccountOf<T>, seller: AccountOf<T> },
+		/// An order was failed.
+		OrderFailed { order_id: UUID, buyer: AccountOf<T>, seller: AccountOf<T> },
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
 		/// A string is too long.
 		StringTooLong,
-		/// The machine already exists.
+		/// The machine/order already exists.
 		AlreadyExists,
-		/// The given machine ID is unknown.
+		/// The given machine/order ID is unknown.
 		Unknown,
 		/// The machine status is not the expected status.
 		IncorrectStatus,
+		/// The signing account has no permission to do the operation.
+		NoPermission,
 	}
 
 	#[pallet::call]
@@ -151,6 +173,104 @@ pub mod pallet {
 				details.price = None;
 
 				Self::deposit_event(Event::<T>::OfferCanceled { owner: who.clone(), id });
+				Ok(())
+			})
+		}
+
+		#[pallet::call_index(4)]
+		#[pallet::weight(T::WeightInfo::do_something())]
+		pub fn place_order(
+			origin: OriginFor<T>,
+			order_id: UUID,
+			seller: AccountOf<T>,
+			machine_id: UUID,
+			metadata: BoundedString<T>,
+			total: BalanceOf<T>,
+		)-> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(!Order::<T>::contains_key(&order_id), Error::<T>::AlreadyExists);
+
+			Machine::<T>::try_mutate(seller.clone(), &machine_id, |maybe_details| {
+				let details = maybe_details.as_mut().ok_or(Error::<T>::Unknown)?;
+				ensure!(details.status == MachineStatus::ForRent, Error::<T>::IncorrectStatus);
+
+				T::Currency::reserve(&who, total)?;
+
+				details.status = MachineStatus::Renting;
+
+				Order::<T>::insert(
+					&order_id,
+					OrderDetails {
+						buyer: who.clone(),
+						seller: seller.clone(),
+						machine_id,
+						total,
+						metadata: metadata.clone(),
+						status: OrderStatus::Training,
+					},
+				);
+	
+				Self::deposit_event(Event::<T>::OrderPlaced {
+					order_id,
+					buyer: who,
+					seller,
+					machine_id,
+					total,
+					metadata,
+				});
+				Ok(())
+			})
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(T::WeightInfo::do_something())]
+		pub fn order_completed(origin: OriginFor<T>, order_id: UUID, metadata: BoundedString<T>)-> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			Order::<T>::try_mutate(&order_id, |maybe_order| {
+				let order = maybe_order.as_mut().ok_or(Error::<T>::Unknown)?;
+				ensure!(who == order.seller, Error::<T>::NoPermission);
+				ensure!(order.status == OrderStatus::Training, Error::<T>::IncorrectStatus);
+
+				Machine::<T>::try_mutate(&order.seller, &order.machine_id, |maybe_machine| -> DispatchResult {
+					let machine = maybe_machine.as_mut().ok_or(Error::<T>::Unknown)?;
+					ensure!(machine.status == MachineStatus::Renting, Error::<T>::IncorrectStatus);
+					machine.status = MachineStatus::ForRent;
+					Ok(())
+				})?;
+
+				order.metadata = metadata;
+				order.status = OrderStatus::Completed;
+				T::Currency::unreserve(&order.buyer, order.total);
+				T::Currency::transfer(&order.buyer, &order.seller, order.total, KeepAlive)?;
+
+				Self::deposit_event(Event::<T>::OrderCompleted { order_id, buyer: order.buyer.clone(), seller: order.seller.clone() });
+				Ok(())
+			})
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(T::WeightInfo::do_something())]
+		pub fn order_failed(origin: OriginFor<T>, order_id: UUID, metadata: BoundedString<T>)-> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			Order::<T>::try_mutate(&order_id, |maybe_order| {
+				let order = maybe_order.as_mut().ok_or(Error::<T>::Unknown)?;
+				ensure!(who == order.seller, Error::<T>::NoPermission);
+				ensure!(order.status == OrderStatus::Training, Error::<T>::IncorrectStatus);
+
+				Machine::<T>::try_mutate(&order.seller, &order.machine_id, |maybe_machine| -> DispatchResult {
+					let machine = maybe_machine.as_mut().ok_or(Error::<T>::Unknown)?;
+					ensure!(machine.status == MachineStatus::Renting, Error::<T>::IncorrectStatus);
+					machine.status = MachineStatus::ForRent;
+					Ok(())
+				})?;
+
+				order.metadata = metadata;
+				order.status = OrderStatus::Failed;
+				T::Currency::unreserve(&order.buyer, order.total);
+
+				Self::deposit_event(Event::<T>::OrderFailed { order_id, buyer: order.buyer.clone(), seller: order.seller.clone() });
 				Ok(())
 			})
 		}
