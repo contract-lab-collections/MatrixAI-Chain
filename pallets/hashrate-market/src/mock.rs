@@ -1,5 +1,5 @@
 use crate as pallet_hashrate_market;
-use frame_support::traits::{ConstU16, ConstU64};
+use frame_support::traits::{ConstU16, ConstU32, ConstU64};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -17,6 +17,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system,
+		Balances: pallet_balances,
 		HashrateMarket: pallet_hashrate_market,
 	}
 );
@@ -39,7 +40,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -48,12 +49,39 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+impl pallet_balances::Config for Test {
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+	type Balance = u64;
+	type RuntimeEvent = RuntimeEvent;
+	type DustRemoval = ();
+	type ExistentialDeposit = ConstU64<1>;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type FreezeIdentifier = ();
+	type MaxFreezes = ();
+	type HoldIdentifier = ();
+	type MaxHolds = ();
+}
+
 impl pallet_hashrate_market::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type StringLimit = ConstU32<2048>;
 	type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	pallet_balances::GenesisConfig::<Test> {
+		balances: vec![(1, 100), (2, 100)],
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	let mut ext: sp_io::TestExternalities = t.into();
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }
