@@ -111,7 +111,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(T::WeightInfo::add_machine())]
 		pub fn add_machine(origin: OriginFor<T>, id: UUID, metadata: BoundedString<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(!Machine::<T>::contains_key(&who, &id), Error::<T>::AlreadyExists);
@@ -131,7 +131,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(T::WeightInfo::remove_machine())]
 		pub fn remove_machine(origin: OriginFor<T>, id: UUID) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let machine = Machine::<T>::get(&who, &id).ok_or(Error::<T>::Unknown)?;
@@ -144,7 +144,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(T::WeightInfo::make_offer())]
 		pub fn make_offer(origin: OriginFor<T>, id: UUID, price: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -161,7 +161,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(T::WeightInfo::cancel_offer())]
 		pub fn cancel_offer(origin: OriginFor<T>, id: UUID) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -178,7 +178,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(4)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(T::WeightInfo::place_order())]
 		pub fn place_order(
 			origin: OriginFor<T>,
 			order_id: UUID,
@@ -223,7 +223,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(T::WeightInfo::order_completed())]
 		pub fn order_completed(origin: OriginFor<T>, order_id: UUID, metadata: BoundedString<T>)-> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -250,7 +250,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		#[pallet::weight(T::WeightInfo::order_failed())]
 		pub fn order_failed(origin: OriginFor<T>, order_id: UUID, metadata: BoundedString<T>)-> DispatchResult {
 			let who = ensure_signed(origin)?;
 
