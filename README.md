@@ -15,6 +15,14 @@ Use the following command to build the node without launching it:
 cargo build --release
 ```
 
+### Tests
+
+Use the following command to run the Rust unit tests:
+
+```sh
+cargo test
+```
+
 ### Single-Node Development Chain
 
 The following command starts a single-node development chain that doesn't persist state:
@@ -35,29 +43,10 @@ To start the development chain with detailed logging, run the following command:
 RUST_BACKTRACE=1 ./target/release/matrix-ai -ldebug --dev
 ```
 
-Development chains:
-
-- Maintain state in a `tmp` folder while the node is running.
-- Use the **Alice** and **Bob** accounts as default validator authorities.
-- Use the **Alice** account as the default `sudo` account.
-- Are preconfigured with a genesis state (`/node/src/chain_spec.rs`) that includes several prefunded development accounts.
-
-To persist chain state between runs, specify a base path by running a command similar to the following:
+### Run with Docker
 
 ```sh
-// Create a folder to use as the db base path
-$ mkdir my-chain-state
-
-// Use of that folder to store the chain state
-$ ./target/release/matrix-ai --dev --base-path ./my-chain-state/
-
-// Check the folder structure created inside the base path after running the chain
-$ ls ./my-chain-state
-chains
-$ ls ./my-chain-state/chains/
-dev
-$ ls ./my-chain-state/chains/dev
-db keystore network
+docker run -it --rm -p 9944:9944 contractlab/matrixai-chain matrix-ai --dev --unsafe-ws-external
 ```
 
 ### Connect with Polkadot-JS Apps Front-End
