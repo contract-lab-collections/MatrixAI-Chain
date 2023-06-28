@@ -4033,6 +4033,7 @@ dependencies = [
  "pallet-balances",
  "pallet-grandpa",
  "pallet-hashrate-market",
+ "pallet-sminer",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -4719,6 +4720,21 @@ dependencies = [
  "sp-staking",
  "sp-std",
  "sp-trie",
+]
+
+[[package]]
+name = "pallet-sminer"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]

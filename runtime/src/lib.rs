@@ -35,7 +35,7 @@ pub use frame_support::{
 		},
 		IdentityFee, Weight,
 	},
-	StorageValue,
+	PalletId, StorageValue,
 };
 pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
@@ -275,6 +275,18 @@ impl pallet_hashrate_market::Config for Runtime {
 	type WeightInfo = pallet_hashrate_market::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const RewardPalletId: PalletId = PalletId(*b"rewardpt");
+	pub const OneDay: BlockNumber = DAYS;
+}
+
+impl pallet_sminer::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type PalletId = RewardPalletId;
+	type OneDayBlock = OneDay;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub struct Runtime
@@ -292,6 +304,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-hashrate-market in the runtime.
 		HashrateMarket: pallet_hashrate_market,
+		Sminer: pallet_sminer,
 	}
 );
 

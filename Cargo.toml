@@ -2,6 +2,7 @@
 members = [
     "node",
     "pallets/hashrate-market",
+    "pallets/sminer",
     "runtime",
 ]
 [profile.release]
