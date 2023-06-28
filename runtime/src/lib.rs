@@ -285,6 +285,7 @@ impl pallet_sminer::Config for Runtime {
 	type Currency = Balances;
 	type PalletId = RewardPalletId;
 	type OneDayBlock = OneDay;
+	type WeightInfo = pallet_sminer::weights::SubstrateWeight<Runtime>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -352,6 +353,7 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
 		[pallet_hashrate_market, HashrateMarket]
+		[pallet_sminer, Sminer]
 	);
 }
 

@@ -2,6 +2,17 @@
 
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+pub mod weights;
+pub use weights::*;
+
 mod constants;
 use constants::*;
 
@@ -41,6 +52,9 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type OneDayBlock: Get<BlockNumberOf<Self>>;
+
+		/// Weight information for extrinsics in this pallet.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::storage]
@@ -80,7 +94,7 @@ pub mod pallet {
 
 		/// The faucet top up.
 		#[pallet::call_index(0)]
-		#[pallet::weight(100_000)]
+		#[pallet::weight(T::WeightInfo::faucet_top_up())]
 		pub fn faucet_top_up(origin: OriginFor<T>, award: BalanceOf<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -93,7 +107,7 @@ pub mod pallet {
 
 		/// Users receive money through the faucet.
 		#[pallet::call_index(1)]
-		#[pallet::weight(100_000)]
+		#[pallet::weight(T::WeightInfo::faucet())]
 		pub fn faucet(origin: OriginFor<T>, to: AccountOf<T>) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
